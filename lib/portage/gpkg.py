@@ -11,6 +11,7 @@ import grp
 import stat
 import sys
 import tempfile
+from copy import copy
 from datetime import datetime
 
 from portage import checksum
@@ -740,12 +741,16 @@ class gpkg:
 					finally:
 						image_tar.kill()
 
-	def update_metadata(self, metadata):
+	def update_metadata(self, metadata, newcpv=None):
 		"""
 		Update metadata in the gpkg file.
 		"""
 		self._verify_binpkg()
 		self.checksums = []
+		oldcpv = None
+
+		if newcpv:
+			oldcpv = self.base_name
 
 		with open(self.gpkg_file, 'rb') as container:
 			container_tar_format = self._get_tar_format(container)
@@ -764,7 +769,12 @@ class gpkg:
 			compression_cmd = self._get_compression_cmd()
 
 			# metadata
-			self._add_metadata(container, metadata, compression_cmd)
+			if newcpv:
+				self.base_name = newcpv
+				self._add_metadata(container, metadata, compression_cmd)
+				self.base_name = oldcpv
+			else:
+				self._add_metadata(container, metadata, compression_cmd)
 
 			# reuse image
 			with tarfile.open(self.gpkg_file, 'r') \
@@ -778,18 +788,35 @@ class gpkg:
 
 				for m in manifest_old:
 					if m[1] == image_old_tarinfo.name:
+						if newcpv:
+							m[1] = m[1].replace(oldcpv, newcpv, 1)
 						self.checksums.append(m)
 						break
 
-				container.addfile(image_old_tarinfo,
+				if newcpv:
+					self.base_name = newcpv
+					image_new_tarinfo = copy(image_old_tarinfo)
+					image_new_tarinfo.name = image_new_tarinfo.name.replace(
+						oldcpv, newcpv, 1)
+				else:
+					image_new_tarinfo = image_old_tarinfo
+
+				container.addfile(image_new_tarinfo,
 					container_old.extractfile(image_old_tarinfo))
 
 				image_sign_old_name = image_old_tarinfo.name + ".sig"
 				if image_sign_old_name in container_old.getnames():
-					image_sign_tarinfo = container_old.getmember(
+					image_sign_old_tarinfo = container_old.getmember(
 						image_sign_old_name)
-					container.addfile(image_sign_tarinfo,
-						container_old.extractfile(image_sign_tarinfo))
+					if newcpv:
+						image_sign_new_tarinfo = copy(image_sign_old_tarinfo)
+						image_sign_new_tarinfo.name = image_sign_new_tarinfo.name.replace(
+							oldcpv, newcpv, 1)
+					else:
+						image_sign_new_tarinfo = image_sign_old_tarinfo
+
+					container.addfile(image_sign_new_tarinfo,
+						container_old.extractfile(image_sign_old_tarinfo))
 
 			self._add_manifest(container)
 
