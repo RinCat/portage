@@ -209,7 +209,7 @@
 # You can also use --homedir "PATH/TO/.gnupg" without sudo or non-standard path
 # \"\${SIGN_FILE}\" is needed and must be the first file to give as signature.
 # "-" must be the last parameter to tell GPG read data from stdin.
-#BINPKG_GPG_VERIFY_COMMAND="/usr/bin/gpg --verify --batch --no-tty --homedir /root/.gnupg --status-fd 1 \"\${SIGN_FILE}\" -"
+#BINPKG_GPG_VERIFY_COMMAND="/usr/bin/sudo -u nobody -- /usr/bin/gpg --no-auto-check-trustdb --verify --batch --no-tty --homedir /etc/portage/gnupg --status-fd 1 \"\${SIGN_FILE}\" -"
 
 # Synchronizing Portage
 # =====================
