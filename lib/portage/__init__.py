@@ -1,4 +1,4 @@
-# Copyright 1998-2020 Gentoo Authors
+# Copyright 1998-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 # pylint: disable=ungrouped-imports
 
@@ -58,6 +58,7 @@ try:
 			'portagetree,portdbapi',
 		'portage.dbapi.vartree:dblink,merge,unmerge,vardbapi,vartree',
 		'portage.dbapi.virtual:fakedbapi',
+		'portage.debug',
 		'portage.dep',
 		'portage.dep:best_match_to_list,dep_getcpv,dep_getkey,' + \
 			'flatten,get_operator,isjustname,isspecific,isvalidatom,' + \
@@ -375,7 +376,7 @@ _sync_mode = False
 class _ForkWatcher:
 	@staticmethod
 	def hook(_ForkWatcher):
-		_ForkWatcher.current_pid = _os.getpid()
+		_ForkWatcher.current_pid = None
 		# Force instantiation of a new event loop policy as a workaround
 		# for https://bugs.python.org/issue22087.
 		asyncio.set_event_loop_policy(None)
@@ -388,6 +389,8 @@ def getpid():
 	"""
 	Cached version of os.getpid(). ForkProcess updates the cache.
 	"""
+	if _ForkWatcher.current_pid is None:
+		_ForkWatcher.current_pid = _os.getpid()
 	return _ForkWatcher.current_pid
 
 def _get_stdin():

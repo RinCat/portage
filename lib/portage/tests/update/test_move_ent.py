@@ -1,4 +1,4 @@
-# Copyright 2012-2013 Gentoo Foundation
+# Copyright 2012-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -78,8 +78,7 @@ class MoveEntTestCase(TestCase):
 				vardb = trees[eroot]["vartree"].dbapi
 				bindb = trees[eroot]["bintree"].dbapi
 
-				updates_dir = os.path.join(test_repo_location, "profiles",
-					"updates")
+				updates_dir = os.path.join(test_repo_location, "profiles", "updates")
 
 				try:
 					ensure_dirs(updates_dir)
@@ -108,8 +107,9 @@ class MoveEntTestCase(TestCase):
 					self.assertRaises(KeyError,
 						vardb.aux_get, "dev-libs/A-1", ["EAPI"])
 					vardb.aux_get("dev-libs/A-moved-1", ["EAPI"])
-					self.assertRaises(KeyError,
-						bindb.aux_get, "dev-libs/A-1", ["EAPI"])
+					# The original package should still exist because a binary
+					# package move is a copy on write operation.
+					bindb.aux_get("dev-libs/A-1", ["EAPI"])
 					bindb.aux_get("dev-libs/A-moved-1", ["EAPI"])
 
 					# dont_apply_updates
