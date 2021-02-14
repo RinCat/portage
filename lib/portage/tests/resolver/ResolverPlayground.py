@@ -317,7 +317,7 @@ class ResolverPlayground:
 				t = portage.xpak.tbz2(binpkg_path)
 				t.recompose_mem(portage.xpak.xpak_mem(metadata))
 			elif binpkg_format == "gpkg":
-				t = portage.gpkg.gpkg(self.settings, cpv, binpkg_path)
+				t = portage.gpkg.gpkg(self.settings, a.cpv, binpkg_path)
 				t.compress(os.path.dirname(binpkg_path), metadata)
 			else:
 				raise InvalidBinaryPackageFormat(binpkg_format)
