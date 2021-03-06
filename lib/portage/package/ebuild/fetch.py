@@ -365,10 +365,10 @@ class DistfileName(str):
 	In order to prepare for a migration from filename-hash to
 	content-hash layout, all consumers of the layout get_filenames
 	method need to be updated to work with content digests as a
-	substitute for distfile names. For example, in order to prepare
-	emirrordist for content-hash, a key-value store needs to be
-	added as a means to associate distfile names with content
-	digest values yielded by the content-hash get_filenames
+	substitute for distfile names. For example, emirrordist requires
+	the --content-db option when working with a content-hash layout,
+	which serves as a means to associate distfile names
+	with content digest values yielded by the content-hash get_filenames
 	implementation.
 	"""
 	def __new__(cls, s, digests=None):
@@ -898,11 +898,11 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 		for myuri in myuris:
 			if urlparse(myuri).scheme:
 				file_uri_tuples.append(
-					(DistfileName(myfile, digests=mydigests.get(myfile)), myuri)
+					(DistfileName(os.path.basename(myuri), digests=mydigests.get(os.path.basename(myuri))), myuri)
 				)
 			else:
 				file_uri_tuples.append(
-					(DistfileName(myfile, digests=mydigests.get(myfile)), None)
+					(DistfileName(os.path.basename(myuri), digests=mydigests.get(os.path.basename(myuri))), None)
 				)
 
 	filedict = OrderedDict()
