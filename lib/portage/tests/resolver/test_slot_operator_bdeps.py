@@ -1,9 +1,11 @@
 # Copyright 2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+from portage.const import SUPPORTED_GENTOO_BINPKG_FORMATS
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import (ResolverPlayground,
 	ResolverPlaygroundTestCase)
+from portage.output import colorize
 
 class SlotOperatorBdependTestCase(TestCase):
 
@@ -95,15 +97,25 @@ class SlotOperatorBdependTestCase(TestCase):
 			),
 		)
 
-		playground = ResolverPlayground(ebuilds=ebuilds, binpkgs=binpkgs,
-			installed=installed, world=world, debug=False)
-		try:
-			for test_case in test_cases:
-				playground.run_TestCase(test_case)
-				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
-		finally:
-			playground.debug = False
-			playground.cleanup()
+
+		for binpkg_format in SUPPORTED_GENTOO_BINPKG_FORMATS:
+			with self.subTest(binpkg_format=binpkg_format):
+				print(colorize("HILITE", binpkg_format), end=" ... ")
+				playground = ResolverPlayground(ebuilds=ebuilds, binpkgs=binpkgs,
+					installed=installed, world=world, debug=False,
+					user_config={
+						"make.conf":
+						(
+							'BINPKG_FORMAT="%s"' % binpkg_format,
+						),
+					})
+				try:
+					for test_case in test_cases:
+						playground.run_TestCase(test_case)
+						self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+				finally:
+					playground.debug = False
+					playground.cleanup()
 
 	def testSlotOperatorBdependAfterBreakage(self):
 		"""
@@ -198,12 +210,21 @@ class SlotOperatorBdependTestCase(TestCase):
 			),
 		)
 
-		playground = ResolverPlayground(ebuilds=ebuilds, binpkgs=binpkgs,
-			installed=installed, world=world, debug=False)
-		try:
-			for test_case in test_cases:
-				playground.run_TestCase(test_case)
-				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
-		finally:
-			playground.debug = False
-			playground.cleanup()
+		for binpkg_format in SUPPORTED_GENTOO_BINPKG_FORMATS:
+			with self.subTest(binpkg_format=binpkg_format):
+				print(colorize("HILITE", binpkg_format), end=" ... ")
+				playground = ResolverPlayground(ebuilds=ebuilds, binpkgs=binpkgs,
+					installed=installed, world=world, debug=False,
+					user_config={
+						"make.conf":
+						(
+							'BINPKG_FORMAT="%s"' % binpkg_format,
+						),
+					})
+				try:
+					for test_case in test_cases:
+						playground.run_TestCase(test_case)
+						self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+				finally:
+					playground.debug = False
+					playground.cleanup()
