@@ -1299,15 +1299,21 @@ class gpkg:
 			raise InvalidCompressionMethod(compression)
 
 		compressor = _compressors[compression]
+		if mode not in compressor:
+			raise InvalidCompressionMethod("{}: {}".format(compression, mode))
+
 		cmd = shlex_split(varexpand(compressor[mode],
 			mydict=self.settings))
 		# Filter empty elements that make Popen fail
 		cmd = [x for x in cmd if x != ""]
 
+		if (not cmd) and ((mode + "_alt") in compressor):
+			cmd = shlex_split(varexpand(compressor[mode + "_alt"],
+				mydict=self.settings))
+			cmd = [x for x in cmd if x != ""]
+
 		if not cmd:
-			if mode.endswith("_alt"):
-				raise CompressorNotFound(compression)
-			return self._get_binary_cmd(compression, mode + "_alt")
+			raise CompressorNotFound(compression)
 		if not find_binary(cmd[0]):
 			raise CompressorNotFound(cmd[0])
 
