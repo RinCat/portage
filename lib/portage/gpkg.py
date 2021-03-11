@@ -406,7 +406,7 @@ class checksum_helper:
 				self.GPG_verify_command = [
 					x for x in self.GPG_verify_command if x != ""]
 			else:
-				raise CommandNotFound("GPG signing command is not set")
+				raise CommandNotFound("GPG verify command is not set")
 
 			self.gpg_proc = subprocess.Popen(self.GPG_verify_command,
 				stdin=subprocess.PIPE, stdout=subprocess.PIPE,
@@ -519,7 +519,7 @@ class gpkg:
 		else:
 			self.create_signature = False
 
-		# The rquest_signature is whether signature files are mandatory.
+		# The request_signature is whether signature files are mandatory.
 		# If set true, any missing signature file will cause reject processing.
 		if "binpkg-request-signature" in self.settings.features:
 			self.request_signature = True
