@@ -429,6 +429,10 @@ class x_install_data(install_data):
 			with codecs.open(path, 'w', 'utf-8') as f:
 				f.write(data)
 
+		if create_entry_points:
+			re_sub_file('cnf/repos.conf', r'= /', '= %(EPREFIX)s/')
+			re_sub_file('cnf/make.globals', r'DIR="/', 'DIR="${EPREFIX}/')
+
 		self.run_command('build_man')
 
 		def process_data_files(df):
@@ -498,10 +502,13 @@ class x_install_lib(install_lib):
 			with codecs.open(path, "w", "utf-8") as f:
 				f.write(data)
 
-		val_dict = {
-			"GLOBAL_CONFIG_PATH": self.portage_confdir,
-		}
+		val_dict = {}
 		if create_entry_points:
+			val_dict.update(
+				{
+					"GLOBAL_CONFIG_PATH": self.portage_confdir,
+				}
+			)
 			re_sub_file(
 				"portage/const.py",
 				(
@@ -722,7 +729,7 @@ class build_ext(_build_ext):
 
 setup(
 	name = 'portage',
-	version = '3.0.16',
+	version = '3.0.17',
 	url = 'https://wiki.gentoo.org/wiki/Project:Portage',
 	project_urls = {
 		'Release Notes': 'https://gitweb.gentoo.org/proj/portage.git/plain/RELEASE-NOTES',
