@@ -1108,7 +1108,7 @@ class gpkg:
 		with open(self.gpkg_file, 'rb') as container:
 			container_tar_format = self._get_tar_format(container)
 			if container_tar_format is None:
-				raise InvalidBinaryPackageFormat('Cannot identify tar format')
+				raise InvalidBinaryPackageFormat(f"Cannot identify tar format: {self.gpkg_file}")
 
 		# Check container
 		with tarfile.open(self.gpkg_file, 'r') as container:
@@ -1116,7 +1116,7 @@ class gpkg:
 
 			# Check gpkg header
 			if self.gpkg_version not in container_files:
-				raise InvalidBinaryPackageFormat("Invalid gpkg file.")
+				raise InvalidBinaryPackageFormat(f"Invalid gpkg file: {self.gpkg_file}")
 
 			# If any signature exists, we assume all files have signature.
 			if any(f.endswith(".sig") for f in container_files):
@@ -1141,7 +1141,7 @@ class gpkg:
 
 			# Check Manifest file
 			if "Manifest" not in unverified_files:
-				raise MissingSignature("Manifest not found")
+				raise MissingSignature(f"Manifest not found: {self.gpkg_file}")
 
 			manifest_file = container.extractfile("Manifest")
 			manifest_data = manifest_file.read()
@@ -1166,7 +1166,7 @@ class gpkg:
 					unverified_files.remove("Manifest")
 					unverified_files.remove("Manifest.sig")
 				else:
-					raise MissingSignature("Manifest signature not found")
+					raise MissingSignature(f"Manifest signature not found: {self.gpkg_file}")
 			else:
 				unverified_files.remove("Manifest")
 				if "Manifest.sig" in unverified_files:
@@ -1191,10 +1191,10 @@ class gpkg:
 						manifest_record = m
 
 				if manifest_record is None:
-					raise DigestException("%s checksum not found" % f)
+					raise DigestException(f"{f} checksum not found in {self.gpkg_file}")
 
 				if int(manifest_record[2]) != int(container.getmember(f).size):
-					raise DigestException("%s file size mismatched" % f)
+					raise DigestException(f"{f} file size mismatched in {self.gpkg_file}")
 
 				# Ignore image file and signature if not needed
 				if (os.path.basename(f).startswith("image") and metadata_only):
@@ -1222,7 +1222,7 @@ class gpkg:
 							gpg_operation=checksum_helper.VERIFY,
 							signature=signature)
 					else:
-						raise MissingSignature("%s signature not found" % f)
+						raise MissingSignature(f"{f} signature not found in {self.gpkg_file}")
 				else:
 					checksum_info = checksum_helper(self.settings)
 
@@ -1245,13 +1245,13 @@ class gpkg:
 							manifest_record[manifest_record.index(c) + 1].lower()):
 							verified_hash_count += 1
 						else:
-							raise DigestException("%s checksum mismatched" % f)
+							raise DigestException(f"{f} checksum mismatched in {self.gpkg_file}")
 					except KeyError:
 						# Checksum method not supported
 						pass
 
 				if verified_hash_count < 1:
-					raise DigestException("%s no supported checksum found" % f)
+					raise DigestException(f"{f} no supported checksum found in {self.gpkg_file}")
 
 				# Current file verified
 				unverified_files.remove(f)
@@ -1265,13 +1265,11 @@ class gpkg:
 
 		# Check if any file IN Manifest but NOT IN binary package
 		if len(unverified_manifest) != 0:
-			raise DigestException("Missing files: %s"
-				% str(unverified_manifest))
+			raise DigestException(f"Missing files: {str(unverified_manifest)} in {self.gpkg_file}")
 
 		# Check if any file NOT IN Manifest but IN binary package
 		if len(unverified_files) != 0:
-			raise DigestException("Unknown files exists: %s"
-				% str(unverified_files))
+			raise DigestException(f"Unknown files exists: {str(unverified_files)} in {self.gpkg_file}")
 
 	def _generate_metadata_from_dir(self, metadata_dir):
 		"""
