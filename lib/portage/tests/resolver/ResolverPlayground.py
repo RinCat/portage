@@ -9,7 +9,10 @@ import portage
 from itertools import permutations
 from portage import os
 from portage import shutil
-from portage.const import (GLOBAL_CONFIG_PATH, USER_CONFIG_PATH,
+from portage.const import (
+	GLOBAL_CONFIG_PATH,
+	PORTAGE_BIN_PATH,
+	USER_CONFIG_PATH,
 	SUPPORTED_GENTOO_BINPKG_FORMATS,
 )
 from portage.process import find_binary
@@ -72,6 +75,27 @@ class ResolverPlayground:
 </pkgmetadata>
 """
 
+	portage_bin = (
+		'ebuild',
+		'egencache',
+		'emerge',
+		'emerge-webrsync',
+		'emirrordist',
+		'glsa-check',
+		'portageq',
+		'quickpkg',
+	)
+
+	portage_sbin = (
+		'archive-conf',
+		'dispatch-conf',
+		'emaint',
+		'env-update',
+		'etc-update',
+		'fixpackages',
+		'regenworld',
+	)
+
 	def __init__(self, ebuilds={}, binpkgs={}, installed={}, profile={}, repo_configs={}, \
 		user_config={}, sets={}, world=[], world_sets=[], distfiles={}, eclasses={},
 		eprefix=None, targetroot=False, debug=False):
@@ -89,6 +113,14 @@ class ResolverPlayground:
 			# EPREFIX/bin is used by fake true_binaries. Real binaries goes into EPREFIX/usr/bin
 			eubin = os.path.join(self.eprefix, "usr", "bin")
 			ensure_dirs(eubin)
+			for x in self.portage_bin:
+				os.symlink(os.path.join(PORTAGE_BIN_PATH, x), os.path.join(eubin, x))
+
+			eusbin = os.path.join(self.eprefix, "usr", "sbin")
+			ensure_dirs(eusbin)
+			for x in self.portage_sbin:
+				os.symlink(os.path.join(PORTAGE_BIN_PATH, x), os.path.join(eusbin, x))
+
 			essential_binaries = (
 				"awk",
 				"basename",
@@ -144,6 +176,7 @@ class ResolverPlayground:
 		# this because tests should be self-contained such that
 		# the "real" value of portage.const.EPREFIX is entirely
 		# irrelevant (see bug #492932).
+		self._orig_eprefix = portage.const.EPREFIX
 		portage.const.EPREFIX = self.eprefix.rstrip(os.sep)
 
 		self.eroot = self.eprefix + os.sep
@@ -695,6 +728,9 @@ class ResolverPlayground:
 			print("\nEROOT=%s" % self.eroot)
 		else:
 			shutil.rmtree(self.eroot)
+		if hasattr(self, '_orig_eprefix'):
+			portage.const.EPREFIX = self._orig_eprefix
+
 
 class ResolverPlaygroundTestCase:
 

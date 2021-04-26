@@ -1,7 +1,7 @@
 # Copyright 2011-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import print_function
+import argparse
 import subprocess
 import sys
 
@@ -311,7 +311,14 @@ call_has_and_best_version() {
 		elif binpkg_format == "gpkg":
 			foo_filename = "foo-0-1.gpkg.tar"
 
-		test_commands = (
+		test_commands = ()
+
+		if hasattr(argparse.ArgumentParser, "parse_intermixed_args"):
+			test_commands += (
+				emerge_cmd + ("--oneshot", "dev-libs/A", "-v", "dev-libs/A"),
+			)
+
+		test_commands += (
 			emerge_cmd + ("--usepkgonly", "--root", cross_root, "--quickpkg-direct=y", "--quickpkg-direct-root", "/", "dev-libs/A"),
 			emerge_cmd + ("--usepkgonly", "--quickpkg-direct=y", "--quickpkg-direct-root", cross_root, "dev-libs/A"),
 			env_update_cmd,
