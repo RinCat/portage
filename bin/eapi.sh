@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 2012-2018 Gentoo Foundation
+# Copyright 2012-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 # PHASES
@@ -40,6 +40,10 @@ ___eapi_has_SYSROOT() {
 
 ___eapi_has_BDEPEND() {
 	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-progress|6)$ ]]
+}
+
+___eapi_has_IDEPEND() {
+	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-hdepend|5-progress|6|7)$ ]]
 }
 
 ___eapi_has_RDEPEND_DEPEND_fallback() {
@@ -128,6 +132,18 @@ ___eapi_has_version_functions() {
 	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-progress|6)$ ]]
 }
 
+___eapi_has_hasq() {
+	[[ ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-progress|6|7)$ ]]
+}
+
+___eapi_has_hasv() {
+	[[ ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-progress|6|7)$ ]]
+}
+
+___eapi_has_useq() {
+	[[ ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-progress|6|7)$ ]]
+}
+
 ___eapi_has_master_repositories() {
 	[[ ${1-${EAPI-0}} =~ ^(5-progress)$ ]]
 }
@@ -172,6 +188,18 @@ ___eapi_unpack_supports_xz() {
 
 ___eapi_unpack_supports_txz() {
 	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-progress)$ ]]
+}
+
+___eapi_unpack_supports_7z() {
+	[[ ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-progress|6|7)$ ]]
+}
+
+___eapi_unpack_supports_lha() {
+	[[ ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-progress|6|7)$ ]]
+}
+
+___eapi_unpack_supports_rar() {
+	[[ ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-progress|6|7)$ ]]
 }
 
 ___eapi_econf_passes_--disable-dependency-tracking() {
@@ -238,6 +266,30 @@ ___eapi_has_DESTTREE_INSDESTTREE() {
 	[[ ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-progress|6)$ ]]
 }
 
+___eapi_has_dosym_r() {
+	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-progress|6|7)$ ]]
+}
+
+___eapi_usev_has_second_arg() {
+	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-progress|6|7)$ ]]
+}
+
+___eapi_doconfd_respects_insopts() {
+	[[ ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-progress|6|7)$ ]]
+}
+
+___eapi_doenvd_respects_insopts() {
+	[[ ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-progress|6|7)$ ]]
+}
+
+___eapi_doheader_respects_insopts() {
+	[[ ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-progress|6|7)$ ]]
+}
+
+___eapi_doinitd_respects_exeopts() {
+	[[ ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-progress|6|7)$ ]]
+}
+
 # OTHERS
 
 ___eapi_enables_failglob_in_global_scope() {
@@ -253,7 +305,11 @@ ___eapi_bash_3_2() {
 }
 
 ___eapi_bash_4_2() {
-	! ___eapi_bash_3_2 "$@"
+	[[ ${1-${EAPI-0}} =~ ^(6|7)$ ]]
+}
+
+___eapi_bash_5_0() {
+	true
 }
 
 ___eapi_has_ENV_UNSET() {
