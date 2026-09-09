@@ -676,6 +676,29 @@ class tar_safe_extract:
         self.closed = False
         self.file_list = []
 
+    @staticmethod
+    def _check_symlink_path(root, name):
+        """
+        Resolve existing symlinks on disk and reject paths outside root.
+        This does not check a new symlink's target from the tar header.
+        """
+        real_root = os.path.realpath(root)
+        real_path = os.path.realpath(os.path.join(root, name))
+        if os.path.commonpath((real_root, real_path)) != real_root:
+            writemsg(colorize("BAD", f"Danger: symlink escape detected: {name}\n"))
+            raise ValueError("Symlink escape detected.")
+
+    def _check_hardlink(self, root, member):
+        """Check the on-disk hardlink source and any relocated symlink target."""
+        self._check_symlink_path(root, member.linkname)
+        source = os.path.join(root, member.linkname)
+        if os.path.islink(source):
+            # A relative symlink target may escape from the new location.
+            self._check_symlink_path(
+                root,
+                os.path.join(os.path.dirname(member.name), os.readlink(source)),
+            )
+
     def _check_member(self, member: tarfile.TarInfo, extract_dir: str):
         """
         Raise ValueError if member is not safe to extract into extract_dir.
@@ -702,16 +725,11 @@ class tar_safe_extract:
             writemsg(colorize("BAD", f"Danger: hardlink escape detected: {name}\n"))
             raise ValueError("Hardlink escape detected.")
 
-        # A member name that is free of "/" and ".." components still
-        # escapes extract_dir if one of its parent directories is a symlink
-        # that an earlier member created, e.g. "image/x -> /" followed by
-        # "image/x/etc/cron.d/evil". Resolving the parent directory catches
-        # that no matter how the symlink got there.
-        real_root = os.path.realpath(extract_dir)
-        real_parent = os.path.realpath(os.path.dirname(os.path.join(extract_dir, name)))
-        if real_parent != real_root and not real_parent.startswith(real_root + os.sep):
-            writemsg(colorize("BAD", f"Danger: symlink escape detected: {name}\n"))
-            raise ValueError("Symlink escape detected.")
+        # Check the parent too: replacing a symlink must not modify an outside directory.
+        self._check_symlink_path(extract_dir, os.path.dirname(name))
+        self._check_symlink_path(extract_dir, name)
+        if member.islnk():
+            self._check_hardlink(extract_dir, member)
 
     def extractall(self, dest_dir: str):
         """
@@ -744,9 +762,11 @@ class tar_safe_extract:
                 self.file_list.append(member.name)
                 self.tar.extract(member, path=temp_dir.name)
 
+            self._check_symlink_path(temp_dir.name, self.prefix)
             data_dir = os.path.join(temp_dir.name, self.prefix)
             for file in os.listdir(data_dir):
-                shutil.move(os.path.join(data_dir, file), os.path.join(dest_dir, file))
+                # Same filesystem: rename without following destination symlinks.
+                os.rename(os.path.join(data_dir, file), os.path.join(dest_dir, file))
         finally:
             temp_dir.cleanup()
             self.closed = True
