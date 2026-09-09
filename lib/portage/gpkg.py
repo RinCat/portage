@@ -752,11 +752,7 @@ class tar_safe_extract:
         except AttributeError:
             pass
         try:
-            while True:
-                member = self.tar.next()
-                if member is None:
-                    break
-
+            for member in self.tar:
                 self._check_member(member, temp_dir.name)
 
                 self.file_list.append(member.name)
@@ -854,6 +850,15 @@ class gpkg:
         }
 
     @staticmethod
+    def _check_metadata_files(metadata):
+        """Check that all metadata tar members are regular files."""
+        for member in metadata.getmembers():
+            if not member.isreg():
+                raise InvalidBinaryPackageFormat(
+                    f"Metadata member is not a regular file: {member.name}"
+                )
+
+    @staticmethod
     def _strip_metadata_prefix(path):
         prefix = "metadata/"
         if not path.startswith(prefix):
@@ -880,6 +885,7 @@ class gpkg:
                 metadata_tar = io.BytesIO(metadata_reader.read())
 
             with tarfile.open(mode="r:", fileobj=metadata_tar) as metadata:
+                self._check_metadata_files(metadata)
                 if dest_dir is None:
                     metadata_ = {
                         self._strip_metadata_prefix(k.name): metadata.extractfile(
@@ -990,6 +996,7 @@ class gpkg:
                 metadata_file = io.BytesIO(metadata_reader.read())
 
             with tarfile.open(mode="r:", fileobj=metadata_file) as metadata:
+                self._check_metadata_files(metadata)
                 if want is None:
                     metadata_ = {
                         self._strip_metadata_prefix(k.name): metadata.extractfile(
