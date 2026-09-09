@@ -676,9 +676,14 @@ class tar_safe_extract:
         self.closed = False
         self.file_list = []
 
-    def _check_member(self, member: tarfile.TarInfo):
+    def _check_member(self, member: tarfile.TarInfo, extract_dir: str):
         """
-        Raise ValueError if member is not safe to extract.
+        Raise ValueError if member is not safe to extract into extract_dir.
+
+        tarfile.data_filter can't be used for this containment check
+        because it also rejects absolute symlink targets and strips the
+        setuid/setgid/sticky bits, which ordinary binary packages
+        legitimately contain, so the guarantee is enforced here instead.
         """
         name = member.name
         if (name in self.file_list) or (os.path.join(".", name) in self.file_list):
@@ -687,7 +692,7 @@ class tar_safe_extract:
         if name.startswith("/"):
             writemsg(colorize("BAD", f"Danger: absolute path detected: {name}\n"))
             raise ValueError("Absolute path detected.")
-        if name.startswith("../") or ("/../" in name):
+        if ".." in name.split("/"):
             writemsg(colorize("BAD", f"Danger: path traversal detected: {name}\n"))
             raise ValueError("Path traversal detected.")
         if member.isdev():
@@ -697,6 +702,17 @@ class tar_safe_extract:
             writemsg(colorize("BAD", f"Danger: hardlink escape detected: {name}\n"))
             raise ValueError("Hardlink escape detected.")
 
+        # A member name that is free of "/" and ".." components still
+        # escapes extract_dir if one of its parent directories is a symlink
+        # that an earlier member created, e.g. "image/x -> /" followed by
+        # "image/x/etc/cron.d/evil". Resolving the parent directory catches
+        # that no matter how the symlink got there.
+        real_root = os.path.realpath(extract_dir)
+        real_parent = os.path.realpath(os.path.dirname(os.path.join(extract_dir, name)))
+        if real_parent != real_root and not real_parent.startswith(real_root + os.sep):
+            writemsg(colorize("BAD", f"Danger: symlink escape detected: {name}\n"))
+            raise ValueError("Symlink escape detected.")
+
     def extractall(self, dest_dir: str):
         """
         Extract all files to a temporary directory in the dest_dir, and move
@@ -705,8 +721,11 @@ class tar_safe_extract:
         if self.closed:
             raise OSError("Tar file is closed.")
         temp_dir = tempfile.TemporaryDirectory(dir=dest_dir)
-        # The below tar member security checks can be refactored as a filter function
-        # that raises an exception. Use tarfile.fully_trusted_filter for now, which
+        # tarfile's own filters can't be used here: tarfile.data_filter
+        # rejects absolute symlink targets and strips the setuid/setgid/
+        # sticky bits that ordinary binary packages legitimately contain.
+        # Members are validated by _check_member() before extraction instead,
+        # so the extraction itself must not mangle them. fully_trusted_filter
         # is simply an identity function:
         # def fully_trusted_filter(member, dest_path):
         #     return member
@@ -720,7 +739,7 @@ class tar_safe_extract:
                 if member is None:
                     break
 
-                self._check_member(member)
+                self._check_member(member, temp_dir.name)
 
                 self.file_list.append(member.name)
                 self.tar.extract(member, path=temp_dir.name)
