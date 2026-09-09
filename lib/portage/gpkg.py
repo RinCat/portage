@@ -676,6 +676,27 @@ class tar_safe_extract:
         self.closed = False
         self.file_list = []
 
+    def _check_member(self, member: tarfile.TarInfo):
+        """
+        Raise ValueError if member is not safe to extract.
+        """
+        name = member.name
+        if (name in self.file_list) or (os.path.join(".", name) in self.file_list):
+            writemsg(colorize("BAD", f"Danger: duplicate files detected: {name}\n"))
+            raise ValueError("Duplicate files detected.")
+        if name.startswith("/"):
+            writemsg(colorize("BAD", f"Danger: absolute path detected: {name}\n"))
+            raise ValueError("Absolute path detected.")
+        if name.startswith("../") or ("/../" in name):
+            writemsg(colorize("BAD", f"Danger: path traversal detected: {name}\n"))
+            raise ValueError("Path traversal detected.")
+        if member.isdev():
+            writemsg(colorize("BAD", f"Danger: device file detected: {name}\n"))
+            raise ValueError("Device file detected.")
+        if member.islnk() and (member.linkname not in self.file_list):
+            writemsg(colorize("BAD", f"Danger: hardlink escape detected: {name}\n"))
+            raise ValueError("Hardlink escape detected.")
+
     def extractall(self, dest_dir: str):
         """
         Extract all files to a temporary directory in the dest_dir, and move
@@ -698,43 +719,8 @@ class tar_safe_extract:
                 member = self.tar.next()
                 if member is None:
                     break
-                if (member.name in self.file_list) or (
-                    os.path.join(".", member.name) in self.file_list
-                ):
-                    writemsg(
-                        colorize(
-                            "BAD", f"Danger: duplicate files detected: {member.name}\n"
-                        )
-                    )
-                    raise ValueError("Duplicate files detected.")
-                if member.name.startswith("/"):
-                    writemsg(
-                        colorize(
-                            "BAD", f"Danger: absolute path detected: {member.name}\n"
-                        )
-                    )
-                    raise ValueError("Absolute path detected.")
-                if member.name.startswith("../") or ("/../" in member.name):
-                    writemsg(
-                        colorize(
-                            "BAD", f"Danger: path traversal detected: {member.name}\n"
-                        )
-                    )
-                    raise ValueError("Path traversal detected.")
-                if member.isdev():
-                    writemsg(
-                        colorize(
-                            "BAD", f"Danger: device file detected: {member.name}\n"
-                        )
-                    )
-                    raise ValueError("Device file detected.")
-                if member.islnk() and (member.linkname not in self.file_list):
-                    writemsg(
-                        colorize(
-                            "BAD", f"Danger: hardlink escape detected: {member.name}\n"
-                        )
-                    )
-                    raise ValueError("Hardlink escape detected.")
+
+                self._check_member(member)
 
                 self.file_list.append(member.name)
                 self.tar.extract(member, path=temp_dir.name)
