@@ -2486,14 +2486,6 @@ class binarytree:
             path = self._pkg_paths.get(instance_key)
             if path is not None:
                 filename = os.path.join(self.pkgdir, path)
-            elif self._remotepkgs and instance_key in self._remotepkgs:
-                remote_metadata = self._remotepkgs[instance_key]
-                location = self.get_local_repo_location(cpv)
-                if location:
-                    return (
-                        os.path.join(location, remote_metadata["PATH"]),
-                        int(remote_metadata["BUILD_ID"]),
-                    )
 
         if filename is None and not allocate_new:
             try:
@@ -2506,6 +2498,16 @@ class binarytree:
                     filename = os.path.join(self.pkgdir, filename)
                 elif instance_key in self._additional_pkgs:
                     return (None, None)
+                elif self._remotepkgs and instance_key in self._remotepkgs:
+                    # Remote PATH is authoritative even when the index has no
+                    # BUILD_ID (bug #970606).
+                    remote_metadata = self._remotepkgs[instance_key]
+                    location = self.get_local_repo_location(cpv)
+                    if location:
+                        return (
+                            os.path.join(location, remote_metadata["PATH"]),
+                            remote_metadata["CPV"].build_id,
+                        )
 
         if filename is None:
             binpkg_format = self.settings.get(

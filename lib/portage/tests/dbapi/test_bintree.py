@@ -2,6 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import io
+from itertools import product
 import os
 import sys
 import tempfile
@@ -10,6 +11,9 @@ from unittest.mock import MagicMock, call, patch
 from portage.const import BINREPOS_CONF_FILE
 from portage.dbapi.bintree import binarytree
 from portage.tests import TestCase
+from portage.versions import _pkg_str
+
+from _emerge.BinpkgFetcher import BinpkgFetcher
 
 
 class BinarytreeTestCase(TestCase):
@@ -231,5 +235,64 @@ class BinarytreeTestCase(TestCase):
             bt = binarytree(pkgdir=d.name, settings=settings)
             bt.populate(getbinpkgs=True, pretend=True)
             run_trust_helper.assert_not_called()
+        finally:
+            d.cleanup()
+
+    def test_remote_location_without_build_id(self):
+        """
+        Test for bug #970606.
+
+        Verify that remote packages use location and PATH even without BUILD_ID,
+        independently of the format and layout used for local packages.
+        """
+        cases = product(("xpak", "gpkg"), (False, True), (None, "4"))
+        d = tempfile.TemporaryDirectory()
+        try:
+            for remote_format, multi_instance, build_id in cases:
+                msg = (remote_format, multi_instance, build_id)
+                local_format = "gpkg" if remote_format == "xpak" else "xpak"
+                settings = MagicMock()
+                settings.features = "binpkg-multi-instance" if multi_instance else ""
+                settings.get.side_effect = {"BINPKG_FORMAT": local_format}.get
+                bt = binarytree(
+                    pkgdir=os.path.join(d.name, "packages"), settings=settings
+                )
+                bt.populated = True
+                location = os.path.join(d.name, "remote")
+                repoconfig = MagicMock()
+                repoconfig.location = location
+                suffix = "xpak" if remote_format == "xpak" else "gpkg.tar"
+                metadata = {
+                    "BUILD_TIME": "1648851237",
+                    "PATH": f"dev-libs/A/A-1-4.{suffix}",
+                }
+                if build_id is not None:
+                    metadata["BUILD_ID"] = build_id
+                cpv = _pkg_str("dev-libs/A-1", metadata=metadata, repoconfig=repoconfig)
+                metadata["CPV"] = cpv
+                key = bt.dbapi._instance_key(cpv)
+                bt._remotepkgs = {key: metadata}
+                bt.dbapi.cpv_inject(cpv)
+                expected = os.path.join(location, metadata["PATH"])
+                self.assertEqual(
+                    bt.getname_build_id(cpv),
+                    (expected, None if build_id is None else int(build_id)),
+                    msg,
+                )
+                pkg = MagicMock()
+                pkg.cpv = cpv
+                pkg.root_config.trees = {"bintree": bt}
+                fetcher = BinpkgFetcher(pkg=pkg)
+                self.assertEqual(fetcher.pkg_path, expected + ".partial", msg)
+                # Extraction calls getname again without any format override.
+                self.assertEqual(bt.getname(cpv), fetcher.pkg_allocated_path, msg)
+
+                # An existing local copy must still take precedence.
+                bt._pkg_paths[key] = f"dev-libs/A-1.{suffix}"
+                self.assertEqual(
+                    bt.getname(cpv),
+                    os.path.join(bt.pkgdir, bt._pkg_paths[key]),
+                    msg,
+                )
         finally:
             d.cleanup()
